@@ -62,6 +62,28 @@ def get_radial_basis_functions_from_rdf_peaks(rdf_peaks,
         dist = norm(loc=peak, scale=std)
         radial_basis_functions.append(create_Rn(dist))
 
+    overlap_upper_bound = (np.exp(-0.5)/np.sqrt(2*np.pi)/
+                               rdf_peaks_diff[0])
+    inner_prod = np.min([overlap, 
+                         overlap_upper_bound])
+    std=np.min([rdf_peaks_diff[0]/np.sqrt(-2*lambertw(
+                        -2*np.pi*rdf_peaks_diff[0]**2*inner_prod**2, k=0).real),
+                rdf_peaks_diff[0]/np.sqrt(-2*lambertw(
+                        -2*np.pi*rdf_peaks_diff[0]**2*inner_prod**2, k=-1).real)])
+    dist = norm(loc=rdf_peaks[0], scale=std)
+    radial_basis_functions = [create_Rn(dist)]+radial_basis_functions
+
+    overlap_upper_bound = (np.exp(-0.5)/np.sqrt(2*np.pi)/
+                               rdf_peaks_diff[-1])
+    inner_prod = np.min([overlap, 
+                         overlap_upper_bound])
+    std=np.min([rdf_peaks_diff[-1]/np.sqrt(-2*lambertw(
+                        -2*np.pi*rdf_peaks_diff[-1]**2*inner_prod**2, k=0).real),
+                rdf_peaks_diff[-1]/np.sqrt(-2*lambertw(
+                        -2*np.pi*rdf_peaks_diff[-1]**2*inner_prod**2, k=-1).real)])
+    dist = norm(loc=rdf_peaks[-1], scale=std)
+    radial_basis_functions += [create_Rn(dist)]
+
     return radial_basis_functions
 
     
