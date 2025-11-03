@@ -53,8 +53,8 @@ def get_radial_basis_functions_from_rdf_peaks(rdf_peaks,
     radial_basis_functions = []
     for i in range(1, len(rdf_peaks)-1):
         peak = rdf_peaks[i]
-        inner_prod = np.min(overlap, 
-                            overlap_upper_bounds[i-1])
+        inner_prod = np.min([overlap, 
+                             overlap_upper_bounds[i-1]])
         std=np.min([min_rdf_peaks_diff[i-1]/np.sqrt(-2*lambertw(
                          -2*np.pi*min_rdf_peaks_diff[i-1]**2*inner_prod**2, k=0)),
                     min_rdf_peaks_diff[i-1]/np.sqrt(-2*lambertw(
