@@ -59,8 +59,8 @@ def get_radial_basis_functions_from_rdf_peaks(rdf_peaks,
     if not np.allclose(W1.imag, 0) and np.allclose(W2.imag, 0):
         raise RuntimeError("W1 and W2 must be real. Bug alert!")
 
-    std=np.min([min_rdf_peaks_diff/np.sqrt(-2*W1.real),
-                min_rdf_peaks_diff/np.sqrt(-2*W2.real)])
+    std=np.min(np.c_[min_rdf_peaks_diff/np.sqrt(-2*W1.real),
+                     min_rdf_peaks_diff/np.sqrt(-2*W2.real)], axis=1)
     
     dist = norm(loc=rdf_peaks, scale=std)
 
