@@ -94,16 +94,23 @@ def get_radial_basis_functions_from_rdf_peaks(rdf_peaks,
     return radial_basis_functions
 
 def get_single_bond_basis_function(r, radial_basis_functions,
-                                   l, m):
+                                   l_max):
     
     r_norm = np.linalg.norm(r, axis=1)
     r_polar = np.arccos(r[:,-1]/r_norm)
     r_azimuth = np.arccos(r[:,0]/r_norm)
     r_azimuth[r[:,1]<0] = (2*np.pi)-r_azimuth[r[:,1]<0]
 
-
+    Rn = radial_basis_functions(r_norm)
     
     from scipy.special import sph_harm_y
+    l = np.arange(l_max+1)
+    l = np.repeat(l, (2*l)+1)
+    m = np.r_[*[np.arange(-x,x+1) for x in l]]
+    Y_lm = sph_harm_y(l, m, r_polar[:,None], r_azimuth[:,None])
+
+    return np.sqrt(4*np.pi)*Rn[:,:,None]*Y_lm[:,None,:]
+
 
     
 
