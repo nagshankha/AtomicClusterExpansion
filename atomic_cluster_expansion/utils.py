@@ -17,8 +17,6 @@ def radial_basis_chebyt(n_max, rcut, lbd):
     
     radial_basis_functions = create_Rn_func(n_max, rcut, lbd)
     return radial_basis_functions
-    
-
 
 def get_radial_basis_functions_from_rdf_peaks(rdf_peaks, 
                                               overlap=0.01):
