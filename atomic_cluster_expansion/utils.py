@@ -6,10 +6,10 @@ def radial_basis_chebyt(n_max, rcut, lbd):
     def create_Rn_func(n_max, rcut, lbd):
         def func(r):
             g0 = np.ones(len(r))
-            g1 = 1 + np.cos(np.pi*r/rcut)
+            g1 = 0.5*(1 + np.cos(np.pi*r/rcut))
             x = 2*(np.exp(-lbd*((r/rcut)-1))-1)/(np.exp(lbd)-1)
             x = 1-x
-            g = np.c_[*[0.25*(1-chebyt(k-1)(x))*g1
+            g = np.c_[*[0.5*(1-chebyt(k-1)(x))*g1
                         for k in np.arange(2,n_max+1)]]
             g = np.c_[g0, g1, g]
             return g
