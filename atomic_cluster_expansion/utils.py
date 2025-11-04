@@ -11,6 +11,8 @@ def radial_basis(r, rcut, lbd, c):
         x = 2*(np.exp(-lbd*((r/rcut)-1))-1)/(np.exp(-lbd)-1)
         x = 1-x
         return 0.25*(1-chebyt(k-1)(x))*g1
+    
+
 
 def get_radial_basis_functions_from_rdf_peaks(rdf_peaks, 
                                               overlap=0.01):
@@ -40,51 +42,68 @@ def get_radial_basis_functions_from_rdf_peaks(rdf_peaks,
         raise ValueError("all rdf peaks needs to be unique")
     min_rdf_peaks_diff = np.min(np.c_[rdf_peaks_diff[:-1], 
                                       rdf_peaks_diff[1:]], axis=1)
+    min_rdf_peaks_diff = np.r_[rdf_peaks_diff[0],
+                               min_rdf_peaks_diff,
+                               rdf_peaks_diff[-1]]
     # Sanity check
     if np.any(min_rdf_peaks_diff<0) or np.any(np.isclose(min_rdf_peaks_diff, 0)):
         raise RuntimeError("min_rdf_peaks_diff must be all positives. Bug alert!")
     
     overlap_upper_bounds = (np.exp(-0.5)/np.sqrt(2*np.pi)/
                                min_rdf_peaks_diff)
+    inner_prod = np.min(np.c_[[overlap]*len(rdf_peaks), 
+                              overlap_upper_bounds], axis=1)
+    W1 = lambertw(-2*np.pi*min_rdf_peaks_diff**2*inner_prod**2, k=0)
+    W2 = lambertw(-2*np.pi*min_rdf_peaks_diff**2*inner_prod**2, k=-1)
+    # Sanity check
+    if not np.allclose(W1.imag, 0) and np.allclose(W2.imag, 0):
+        raise RuntimeError("W1 and W2 must be real. Bug alert!")
+
+    std=np.min([min_rdf_peaks_diff/np.sqrt(-2*W1.real),
+                min_rdf_peaks_diff/np.sqrt(-2*W2.real)])
     
-    def create_Rn(dist):
-        return lambda x: dist.pdf(x)
+    dist = norm(loc=rdf_peaks, scale=std)
+
+    def create_Rn_func(dist):
+        def func(x):
+            if isinstance(x, (int, float)):
+                return dist.pdf(x)
+            elif isinstance(x, np.ndarray):
+                pass
+            elif isinstance(x, (list, tuple)):
+                x = np.array(x)
+            else:
+                raise TypeError("x must be integer, float, numpy array, list or tuple")
     
-    radial_basis_functions = []
-    for i in range(1, len(rdf_peaks)-1):
-        peak = rdf_peaks[i]
-        inner_prod = np.min([overlap, 
-                             overlap_upper_bounds[i-1]])
-        std=np.min([min_rdf_peaks_diff[i-1]/np.sqrt(-2*lambertw(
-                         -2*np.pi*min_rdf_peaks_diff[i-1]**2*inner_prod**2, k=0).real),
-                    min_rdf_peaks_diff[i-1]/np.sqrt(-2*lambertw(
-                         -2*np.pi*min_rdf_peaks_diff[i-1]**2*inner_prod**2, k=-1).real)])
-        dist = norm(loc=peak, scale=std)
-        radial_basis_functions.append(create_Rn(dist))
-
-    overlap_upper_bound = (np.exp(-0.5)/np.sqrt(2*np.pi)/
-                               rdf_peaks_diff[0])
-    inner_prod = np.min([overlap, 
-                         overlap_upper_bound])
-    std=np.min([rdf_peaks_diff[0]/np.sqrt(-2*lambertw(
-                        -2*np.pi*rdf_peaks_diff[0]**2*inner_prod**2, k=0).real),
-                rdf_peaks_diff[0]/np.sqrt(-2*lambertw(
-                        -2*np.pi*rdf_peaks_diff[0]**2*inner_prod**2, k=-1).real)])
-    dist = norm(loc=rdf_peaks[0], scale=std)
-    radial_basis_functions = [create_Rn(dist)]+radial_basis_functions
-
-    overlap_upper_bound = (np.exp(-0.5)/np.sqrt(2*np.pi)/
-                               rdf_peaks_diff[-1])
-    inner_prod = np.min([overlap, 
-                         overlap_upper_bound])
-    std=np.min([rdf_peaks_diff[-1]/np.sqrt(-2*lambertw(
-                        -2*np.pi*rdf_peaks_diff[-1]**2*inner_prod**2, k=0).real),
-                rdf_peaks_diff[-1]/np.sqrt(-2*lambertw(
-                        -2*np.pi*rdf_peaks_diff[-1]**2*inner_prod**2, k=-1).real)])
-    dist = norm(loc=rdf_peaks[-1], scale=std)
-    radial_basis_functions += [create_Rn(dist)]
-
+            if np.issubdtype(x.dtype, np.integer) or np.issubdtype(x.dtype, np.floating):
+                pass
+            else:
+                raise TypeError("If x is numpy array, list or tuple, it must be either "+
+                                "integer or floating type")
+    
+            if len(x.shape)==2 and x.shape[1]==1:
+                return dist.pdf(x)
+            elif len(x.shape)==1:
+                return dist.pdf(x[:,None])
+            else:
+                raise TypeError("If x is numpy array, list or tuple, it's shape must be (N,) or (N,1)")
+    
+        return func
+    
+    radial_basis_functions = create_Rn_func(dist)
     return radial_basis_functions
+
+def get_single_bond_basis_function(r, radial_basis_functions,
+                                   l, m):
+    
+    r_norm = np.linalg.norm(r, axis=1)
+    r_polar = np.arccos(r[:,-1]/r_norm)
+    r_azimuth = np.arccos(r[:,0]/r_norm)
+    r_azimuth[r[:,1]<0] = (2*np.pi)-r_azimuth[r[:,1]<0]
+
+
+    
+    from scipy.special import sph_harm_y
 
     
 
