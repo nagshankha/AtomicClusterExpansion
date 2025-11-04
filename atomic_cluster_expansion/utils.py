@@ -1,16 +1,22 @@
 import numpy as np
 from scipy.special import chebyt
 
-def radial_basis(r, rcut, lbd, c):
+def radial_basis_chebyt(n_max, rcut, lbd):
 
-    g0 = 1
-    g1 = 1 + np.cos(np.pi*r/rcut)
-    def g_func(k, lbd, g1, r):
-        if not (isinstance(k, int) and k>=2):
-            raise ValueError("k must be an integer >= 2")
-        x = 2*(np.exp(-lbd*((r/rcut)-1))-1)/(np.exp(-lbd)-1)
-        x = 1-x
-        return 0.25*(1-chebyt(k-1)(x))*g1
+    def create_Rn_func(n_max, rcut, lbd):
+        def func(r):
+            g0 = np.ones(r)
+            g1 = 1 + np.cos(np.pi*r/rcut)
+            x = 2*(np.exp(-lbd*((r/rcut)-1))-1)/(np.exp(-lbd)-1)
+            x = 1-x
+            g = np.c_[*[0.25*(1-chebyt(k-1)(x))*g1
+                        for k in np.arange(2,n_max+1)]]
+            g = np.c_[g0, g1, g]
+            return g
+        return func
+    
+    radial_basis_functions = create_Rn_func(n_max, rcut, lbd)
+    return radial_basis_functions
     
 
 
