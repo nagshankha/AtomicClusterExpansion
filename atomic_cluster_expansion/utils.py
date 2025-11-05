@@ -97,7 +97,7 @@ def get_radial_basis_functions_from_rdf_peaks(rdf_peaks,
     radial_basis_functions = create_Rn_func(dist)
     return radial_basis_functions
 
-def get_single_bond_basis_function(r, radial_basis_functions,
+def get_single_bond_basis(r, radial_basis_functions,
                                    l_max):
     
     r_norm = np.linalg.norm(r, axis=1)
@@ -115,6 +115,11 @@ def get_single_bond_basis_function(r, radial_basis_functions,
 
     return np.sqrt(4*np.pi)*Rn[:,:,None]*Y_lm[:,None,:]
 
+def get_invariance_products_of_atomic_bases(single_bond_basis):
+
+    B1 = np.sum(single_bond_basis[:,:,0], axis=0)
+
+    #### ASK CHATGPT BUT TO TAKE DOT PRODUCT FOR INVARIANCE PRODUCTS B WHEN BASIS IS NON-ORTHOGONAL SINCE THE OVERLAP MATRIX S HAS SHAPE DIFFERENT FROM B
 
     
 
