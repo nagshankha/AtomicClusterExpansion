@@ -117,9 +117,13 @@ def get_single_bond_basis(r, radial_basis_functions,
 
 def get_invariance_products_of_atomic_bases(single_bond_basis):
 
-    B1 = np.sum(single_bond_basis[:,:,0], axis=0)
+    v_size = single_bond_basis.shape[1:]
+    B1 = np.sum(single_bond_basis[:,:,0], axis=0)    
+    B2 = ( single_bond_basis[:,np.triu_indices(v_size[0])[0], #to be filled] * 
+           single_bond_basis[:,np.triu_indices(v_size[0])[1], #to be filled] )
+           
 
-    #### ASK CHATGPT BUT TO TAKE DOT PRODUCT FOR INVARIANCE PRODUCTS B WHEN BASIS IS NON-ORTHOGONAL SINCE THE OVERLAP MATRIX S HAS SHAPE DIFFERENT FROM B
+    
 
     
 
