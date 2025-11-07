@@ -117,10 +117,64 @@ def get_single_bond_basis(r, radial_basis_functions,
 
 def get_invariance_products_of_atomic_bases(single_bond_basis):
 
+    import xarray as xr
+
     v_size = single_bond_basis.shape[1:]
-    B1 = np.sum(single_bond_basis[:,:,0], axis=0)    
-    B2 = ( single_bond_basis[:,np.triu_indices(v_size[0])[0], #to be filled] * 
-           single_bond_basis[:,np.triu_indices(v_size[0])[1], #to be filled] )
+
+    B1 = np.sum(single_bond_basis[:,:,0], axis=0) 
+    B1 = xr.DataArray(
+                B1,
+                dims=("n",),
+                coords={
+                        "n": np.arange(v_size[0])+1,
+                       }
+                    )
+    
+    if len(v_size) != 2:
+        raise ValueError("single_bond_basis must be 3d numpy array")
+    elif np.sqrt(v_size[1]) != int(np.sqrt(v_size[1])):
+        raise ValueError("The size of the 3rd dimension of single_bond_basis must be a square")
+    else:
+        l_max = int(np.sqrt(v_size[1])-1)
+    unique_l = np.arange(l_max+1)
+    m_span_lengths = (2*unique_l)+1
+    l_start_inds = np.cumsum(m_span_lengths)-m_span_lengths
+       
+    B2 = []
+    for i,l in enumerate(unique_l):   
+        inds = l_start_inds[i] + (m_span_lengths[i]//2)
+        B2.append( np.sum(single_bond_basis[:, np.triu_indices(v_size[0])[0], None, 
+                                            inds], axis=0) * 
+                   np.sum(single_bond_basis[:, None, np.triu_indices(v_size[0])[1], 
+                                            inds], axis=0) )
+        for m in np.arange(1,l+1):
+            inds = inds + np.array([m,-m])
+            B2[i] += ( np.sum(single_bond_basis[:, np.triu_indices(v_size[0])[0], None, 
+                                            inds[0]], axis=0) * 
+                       np.sum(single_bond_basis[:, None, np.triu_indices(v_size[0])[1], 
+                                            inds[1]], axis=0) ) * (-1.)**m
+            B2[i] += ( np.sum(single_bond_basis[:, np.triu_indices(v_size[0])[0], None, 
+                                            inds[1]], axis=0) * 
+                       np.sum(single_bond_basis[:, None, np.triu_indices(v_size[0])[1], 
+                                            inds[0]], axis=0) ) * (-1.)**m
+    B2 = np.stack(B2, axis=2)
+    B2 = xr.DataArray(
+                B2,
+                dims=("n1", "n2", "l"),
+                coords={
+                        "n1": np.triu_indices(v_size[0])[0]+1,
+                        "n2": np.triu_indices(v_size[0])[1]+1,
+                        "l": unique_l
+                       }
+                    )
+    
+
+    l1, l2, l3 = np.ogrid[:l_max+1, :l_max+1, :l_max+1]
+    mask = (np.abs(l1 - l2) <= l3) & (l3 <= l1 + l2) & ((l1 + l2 + l3) % 2 == 0)
+    l_tuples_B3 = np.column_stack(np.where(mask))
+    B3 = []
+    
+    
            
 
     
