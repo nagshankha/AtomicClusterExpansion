@@ -115,7 +115,7 @@ def get_single_bond_basis(r, radial_basis_functions,
 
     return np.sqrt(4*np.pi)*Rn[:,:,None]*Y_lm[:,None,:]
 
-def get_invariance_products_of_atomic_bases(single_bond_basis):
+def get_single_component_invariance_products_of_atomic_bases(single_bond_basis):
 
     import xarray as xr
 
@@ -168,12 +168,37 @@ def get_invariance_products_of_atomic_bases(single_bond_basis):
                        }
                     )
     
-
+    n_tuples_B3 = 
     l1, l2, l3 = np.ogrid[:l_max+1, :l_max+1, :l_max+1]
     mask = (np.abs(l1 - l2) <= l3) & (l3 <= l1 + l2) & ((l1 + l2 + l3) % 2 == 0)
     l_tuples_B3 = np.column_stack(np.where(mask))
     B3 = []
-    
+    for i,l_tup in enumerate(l_tuples_B3):   
+        inds = l_start_inds[i] + (m_span_lengths[i]//2)
+        B3.append( np.sum(single_bond_basis[:, np.triu_indices(v_size[0])[0], None, 
+                                            inds], axis=0) * 
+                   np.sum(single_bond_basis[:, None, np.triu_indices(v_size[0])[1], 
+                                            inds], axis=0) )
+        for m in np.arange(1,l+1):
+            inds = inds + np.array([m,-m])
+            B2[i] += ( np.sum(single_bond_basis[:, np.triu_indices(v_size[0])[0], None, 
+                                            inds[0]], axis=0) * 
+                       np.sum(single_bond_basis[:, None, np.triu_indices(v_size[0])[1], 
+                                            inds[1]], axis=0) ) * (-1.)**m
+            B2[i] += ( np.sum(single_bond_basis[:, np.triu_indices(v_size[0])[0], None, 
+                                            inds[1]], axis=0) * 
+                       np.sum(single_bond_basis[:, None, np.triu_indices(v_size[0])[1], 
+                                            inds[0]], axis=0) ) * (-1.)**m
+    B2 = np.stack(B2, axis=2)
+    B2 = xr.DataArray(
+                B2,
+                dims=("n1", "n2", "l"),
+                coords={
+                        "n1": np.triu_indices(v_size[0])[0]+1,
+                        "n2": np.triu_indices(v_size[0])[1]+1,
+                        "l": unique_l
+                       }
+                    )
     
            
 
