@@ -148,7 +148,7 @@ def get_single_component_invariance_products_of_atomic_bases(single_bond_basis):
                    np.sum(single_bond_basis[:, None, np.triu_indices(v_size[0])[1], 
                                             inds], axis=0) )
         for m in np.arange(1,l+1):
-            inds = inds + np.array([m,-m])
+            inds = l_start_inds[i] + (m_span_lengths[i]//2) + np.array([m,-m])
             B2[i] += ( np.sum(single_bond_basis[:, np.triu_indices(v_size[0])[0], None, 
                                             inds[0]], axis=0) * 
                        np.sum(single_bond_basis[:, None, np.triu_indices(v_size[0])[1], 
@@ -168,28 +168,68 @@ def get_single_component_invariance_products_of_atomic_bases(single_bond_basis):
                        }
                     )
     
-    n_tuples_B3 = 
+    from sympy.physics.wigner import wigner_3j
+    
+    n1, n2, n3 = np.ogrid[:v_size[0], :v_size[0], :v_size[0]]
+    mask = (n3 >= n2) & (n2 >= n1)    
+    contracted_n_tuples_B3 = np.column_stack(np.where(mask))
+    del n1, n2, n3, mask
+
     l1, l2, l3 = np.ogrid[:l_max+1, :l_max+1, :l_max+1]
     mask = (np.abs(l1 - l2) <= l3) & (l3 <= l1 + l2) & ((l1 + l2 + l3) % 2 == 0)
     l_tuples_B3 = np.column_stack(np.where(mask))
+    del l1, l2, l3, mask
+
     B3 = []
     for i,l_tup in enumerate(l_tuples_B3):   
-        inds = l_start_inds[i] + (m_span_lengths[i]//2)
-        B3.append( np.sum(single_bond_basis[:, np.triu_indices(v_size[0])[0], None, 
-                                            inds], axis=0) * 
-                   np.sum(single_bond_basis[:, None, np.triu_indices(v_size[0])[1], 
-                                            inds], axis=0) )
-        for m in np.arange(1,l+1):
-            inds = inds + np.array([m,-m])
-            B2[i] += ( np.sum(single_bond_basis[:, np.triu_indices(v_size[0])[0], None, 
-                                            inds[0]], axis=0) * 
-                       np.sum(single_bond_basis[:, None, np.triu_indices(v_size[0])[1], 
-                                            inds[1]], axis=0) ) * (-1.)**m
-            B2[i] += ( np.sum(single_bond_basis[:, np.triu_indices(v_size[0])[0], None, 
-                                            inds[1]], axis=0) * 
-                       np.sum(single_bond_basis[:, None, np.triu_indices(v_size[0])[1], 
-                                            inds[0]], axis=0) ) * (-1.)**m
-    B2 = np.stack(B2, axis=2)
+        if np.all(l_tup==l_tup[0]):
+            n1, n2, n3 = contracted_n_tuples_B3.T
+        else:
+            n1, n2, n3 = np.meshgrid(*([np.arange(v_size[0])]*3))
+        inds = l_start_inds[l_tup] + (m_span_lengths[l_tup]//2)
+        coeff = wigner_3j(*l_tup, 0, 0, 0)
+        B3.append( coeff *
+                   np.sum(single_bond_basis[:, n1, None, None,
+                                            inds[0], None, None], axis=0) * 
+                   np.sum(single_bond_basis[:, None, n2, None, 
+                                            None, inds[1], None], axis=0) *
+                   np.sum(single_bond_basis[:, None, None, n3, 
+                                            None, None, inds[2]], axis=0) )
+        
+        m1 = np.arange(-l_tup[0], l_tup[0]+1)
+        m2 = np.arange(-l_tup[1], l_tup[1]+1)
+        m3 = np.arange(-l_tup[2], l_tup[2]+1)
+
+        M1, M2, M3 = np.ogrid[-l_tup[0]:l_tup[0]+1, 
+                              -l_tup[1]:l_tup[1]+1, 
+                              -l_tup[2]:l_tup[2]+1]
+
+        # Condition: m1 + m2 + m3 = 0
+        mask = (M1 + M2 + M3 == 0)
+
+        # Extract coordinates (m1,m2,m3)
+        triples = np.column_stack(np.where(mask))
+
+        # Convert index triples back to actual m values
+        # Because np.where returns indices into m1,m2,m3 arrays
+        m_tuples = np.column_stack((m1[triples[:,0]],
+                                    m2[triples[:,1]],
+                                    m3[triples[:,2]]))
+
+        # Exclude (0,0,0)
+        m_tuples = m_tuples[~np.all(m_tuples==0, axis=1)]
+        del m1, m2, m3, M1, M2, M3, triples, mask
+
+        for m_tup in m_tuples:
+            inds = l_start_inds[l_tup] + (m_span_lengths[l_tup]//2) + m_tup
+            B3[i] += ( coeff *
+                       np.sum(single_bond_basis[:, n1, None, None,
+                                                inds[0], None, None], axis=0) * 
+                       np.sum(single_bond_basis[:, None, n2, None, 
+                                                None, inds[1], None], axis=0) *
+                       np.sum(single_bond_basis[:, None, None, n3, 
+                                                None, None, inds[2]], axis=0) ) 
+    B3 = np.stack(B3, axis=2)
     B2 = xr.DataArray(
                 B2,
                 dims=("n1", "n2", "l"),
