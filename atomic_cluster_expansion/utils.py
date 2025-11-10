@@ -117,17 +117,14 @@ def get_single_bond_basis(r, radial_basis_functions,
 
 def get_single_component_invariance_products_of_atomic_bases(single_bond_basis):
 
-    import xarray as xr
+    import pandas as pd
 
     v_size = single_bond_basis.shape[1:]
 
     B1 = np.sum(single_bond_basis[:,:,0], axis=0) 
-    B1 = xr.DataArray(
-                B1,
-                dims=("n",),
-                coords={
-                        "n": np.arange(v_size[0])+1,
-                       }
+    B1 = pd.DataFrame(
+                np.c_[np.arange(v_size[0])+1, B1],
+                columns=["n", "B1"]
                     )
     
     if len(v_size) != 2:
@@ -143,29 +140,27 @@ def get_single_component_invariance_products_of_atomic_bases(single_bond_basis):
     B2 = []
     for i,l in enumerate(unique_l):   
         inds = l_start_inds[i] + (m_span_lengths[i]//2)
-        B2.append( np.sum(single_bond_basis[:, np.triu_indices(v_size[0])[0], None, 
+        B2.append( np.sum(single_bond_basis[:, np.triu_indices(v_size[0])[0], 
                                             inds], axis=0) * 
-                   np.sum(single_bond_basis[:, None, np.triu_indices(v_size[0])[1], 
+                   np.sum(single_bond_basis[:, np.triu_indices(v_size[0])[1], 
                                             inds], axis=0) )
         for m in np.arange(1,l+1):
             inds = l_start_inds[i] + (m_span_lengths[i]//2) + np.array([m,-m])
-            B2[i] += ( np.sum(single_bond_basis[:, np.triu_indices(v_size[0])[0], None, 
+            B2[i] += ( np.sum(single_bond_basis[:, np.triu_indices(v_size[0])[0],  
                                             inds[0]], axis=0) * 
-                       np.sum(single_bond_basis[:, None, np.triu_indices(v_size[0])[1], 
+                       np.sum(single_bond_basis[:, np.triu_indices(v_size[0])[1], 
                                             inds[1]], axis=0) ) * (-1.)**m
-            B2[i] += ( np.sum(single_bond_basis[:, np.triu_indices(v_size[0])[0], None, 
+            B2[i] += ( np.sum(single_bond_basis[:, np.triu_indices(v_size[0])[0], 
                                             inds[1]], axis=0) * 
-                       np.sum(single_bond_basis[:, None, np.triu_indices(v_size[0])[1], 
+                       np.sum(single_bond_basis[:, np.triu_indices(v_size[0])[1], 
                                             inds[0]], axis=0) ) * (-1.)**m
-    B2 = np.stack(B2, axis=2)
-    B2 = xr.DataArray(
-                B2,
-                dims=("n1", "n2", "l"),
-                coords={
-                        "n1": np.triu_indices(v_size[0])[0]+1,
-                        "n2": np.triu_indices(v_size[0])[1]+1,
-                        "l": unique_l
-                       }
+    B2 = np.r_[B2]
+    B2 = pd.DataFrame(
+                np.c_[np.tile(np.triu_indices(v_size[0])[0]+1, len(unique_l)), 
+                      np.tile(np.triu_indices(v_size[0])[1]+1, len(unique_l)),
+                      np.repeat(unique_l, int(v_size[0]*(v_size[0]+1)/2)),
+                      B2],
+                columns=["n1", "n2", "l", "B2"]
                     )
     
     from sympy.physics.wigner import wigner_3j
@@ -180,7 +175,7 @@ def get_single_component_invariance_products_of_atomic_bases(single_bond_basis):
     l_tuples_B3 = np.column_stack(np.where(mask))
     del l1, l2, l3, mask
 
-    B3 = []
+    B3 = [], n_tuples_B3 = []
     for i,l_tup in enumerate(l_tuples_B3):   
         if np.all(l_tup==l_tup[0]):
             n1, n2, n3 = contracted_n_tuples_B3.T
@@ -189,12 +184,9 @@ def get_single_component_invariance_products_of_atomic_bases(single_bond_basis):
         inds = l_start_inds[l_tup] + (m_span_lengths[l_tup]//2)
         coeff = wigner_3j(*l_tup, 0, 0, 0)
         B3.append( coeff *
-                   np.sum(single_bond_basis[:, n1, None, None,
-                                            inds[0], None, None], axis=0) * 
-                   np.sum(single_bond_basis[:, None, n2, None, 
-                                            None, inds[1], None], axis=0) *
-                   np.sum(single_bond_basis[:, None, None, n3, 
-                                            None, None, inds[2]], axis=0) )
+                   np.sum(single_bond_basis[:, n1, inds[0]], axis=0) * 
+                   np.sum(single_bond_basis[:, n2, inds[1]], axis=0) *
+                   np.sum(single_bond_basis[:, n3, inds[2]], axis=0) )
         
         m1 = np.arange(-l_tup[0], l_tup[0]+1)
         m2 = np.arange(-l_tup[1], l_tup[1]+1)
@@ -222,22 +214,20 @@ def get_single_component_invariance_products_of_atomic_bases(single_bond_basis):
 
         for m_tup in m_tuples:
             inds = l_start_inds[l_tup] + (m_span_lengths[l_tup]//2) + m_tup
+            coeff = wigner_3j(*l_tup, *m_tup)
             B3[i] += ( coeff *
-                       np.sum(single_bond_basis[:, n1, None, None,
-                                                inds[0], None, None], axis=0) * 
-                       np.sum(single_bond_basis[:, None, n2, None, 
-                                                None, inds[1], None], axis=0) *
-                       np.sum(single_bond_basis[:, None, None, n3, 
-                                                None, None, inds[2]], axis=0) ) 
-    B3 = np.stack(B3, axis=2)
-    B2 = xr.DataArray(
-                B2,
-                dims=("n1", "n2", "l"),
-                coords={
-                        "n1": np.triu_indices(v_size[0])[0]+1,
-                        "n2": np.triu_indices(v_size[0])[1]+1,
-                        "l": unique_l
-                       }
+                       np.sum(single_bond_basis[:, n1, inds[0]], axis=0) * 
+                       np.sum(single_bond_basis[:, n2, inds[1]], axis=0) *
+                       np.sum(single_bond_basis[:, n3, inds[2]], axis=0) )
+        n_tuples_B3.append(np.c_[n1,n2,n3])
+        del n1, n2, n3
+
+    B3 = np.r_[B3]
+    B3 = pd.DataFrame(
+                np.c_[np.tile(n_tuples_B3, (len(l_tuples_B3),1)),
+                      np.repeat(l_tuples_B3, len(n_tuples_B3), axis=0),
+                      B2],
+                columns=["n1", "n2", "n3", "l1", "l2", "l3"]
                     )
     
            
