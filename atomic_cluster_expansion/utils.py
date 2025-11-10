@@ -115,7 +115,8 @@ def get_single_bond_basis(r, radial_basis_functions,
 
     return np.sqrt(4*np.pi)*Rn[:,:,None]*Y_lm[:,None,:]
 
-def get_single_component_invariance_products_of_atomic_bases(single_bond_basis):
+def get_single_component_invariance_products_of_atomic_bases(single_bond_basis, 
+                                                             body_order=1):
 
     import pandas as pd
 
@@ -127,6 +128,9 @@ def get_single_component_invariance_products_of_atomic_bases(single_bond_basis):
                 columns=["n", "B1"]
                     )
     
+    if body_order == 1:
+        return B1
+
     if len(v_size) != 2:
         raise ValueError("single_bond_basis must be 3d numpy array")
     elif np.sqrt(v_size[1]) != int(np.sqrt(v_size[1])):
@@ -162,6 +166,9 @@ def get_single_component_invariance_products_of_atomic_bases(single_bond_basis):
                       B2],
                 columns=["n1", "n2", "l", "B2"]
                     )
+    
+    if body_order == 2:
+        return B1, B2
     
     from sympy.physics.wigner import wigner_3j
     
@@ -229,6 +236,9 @@ def get_single_component_invariance_products_of_atomic_bases(single_bond_basis):
                       B2],
                 columns=["n1", "n2", "n3", "l1", "l2", "l3"]
                     )
+    
+    if body_order == 3:
+        return B1, B2, B3
     
            
 
