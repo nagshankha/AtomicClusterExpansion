@@ -241,6 +241,7 @@ def get_single_component_invariance_products_of_atomic_bases(single_bond_basis,
         n_tuples_B3.append(np.c_[n1,n2,n3])
         del n1, n2, n3
 
+    n_tuples_B3 = np.vstack(n_tuples_B3)
     B3 = np.r_[*B3]
     if np.allclose(B3.imag, 0.0):
         B3 = pd.DataFrame(
