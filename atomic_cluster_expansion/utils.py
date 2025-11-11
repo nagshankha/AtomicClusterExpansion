@@ -193,7 +193,7 @@ def get_single_component_invariance_products_of_atomic_bases(single_bond_basis,
     l_tuples_B3 = np.column_stack(np.where(mask))
     del l1, l2, l3, mask
 
-    B3 = [], n_tuples_B3 = []
+    B3 = []; n_tuples_B3 = []
     for i,l_tup in enumerate(l_tuples_B3):   
         if np.all(l_tup==l_tup[0]):
             n1, n2, n3 = contracted_n_tuples_B3.T
