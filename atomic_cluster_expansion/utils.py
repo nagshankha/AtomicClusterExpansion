@@ -116,7 +116,10 @@ def get_single_bond_basis(r, radial_basis_functions,
     return np.sqrt(4*np.pi)*Rn[:,:,None]*Y_lm[:,None,:]
 
 def get_single_component_invariance_products_of_atomic_bases(single_bond_basis, 
-                                                             body_order=1):
+                                                             body_order=2):
+    
+    if body_order<2:
+        raise ValueError("body_order must be >= 2")
 
     import pandas as pd
 
@@ -128,7 +131,7 @@ def get_single_component_invariance_products_of_atomic_bases(single_bond_basis,
                 columns=["n", "B1"]
                     )
     
-    if body_order == 1:
+    if body_order == 2:
         return B1
 
     if len(v_size) != 2:
@@ -167,7 +170,7 @@ def get_single_component_invariance_products_of_atomic_bases(single_bond_basis,
                 columns=["n1", "n2", "l", "B2"]
                     )
     
-    if body_order == 2:
+    if body_order == 3:
         return B1, B2
     
     from sympy.physics.wigner import wigner_3j
@@ -188,8 +191,102 @@ def get_single_component_invariance_products_of_atomic_bases(single_bond_basis,
             n1, n2, n3 = contracted_n_tuples_B3.T
         else:
             n1, n2, n3 = np.meshgrid(*([np.arange(v_size[0])]*3))
+            n1 = n1.ravel(); n2 = n2.ravel(); n3 = n3.ravel()
         inds = l_start_inds[l_tup] + (m_span_lengths[l_tup]//2)
-        coeff = wigner_3j(*l_tup, 0, 0, 0)
+        coeff = float(wigner_3j(*l_tup, 0, 0, 0))
+        B3.append( coeff *
+                   np.sum(single_bond_basis[:, n1, inds[0]], axis=0) * 
+                   np.sum(single_bond_basis[:, n2, inds[1]], axis=0) *
+                   np.sum(single_bond_basis[:, n3, inds[2]], axis=0) )
+        
+        m1 = np.arange(-l_tup[0], l_tup[0]+1)
+        m2 = np.arange(-l_tup[1], l_tup[1]+1)
+        m3 = np.arange(-l_tup[2], l_tup[2]+1)
+
+        M1, M2, M3 = np.ogrid[-l_tup[0]:l_tup[0]+1, 
+                              -l_tup[1]:l_tup[1]+1, 
+                              -l_tup[2]:l_tup[2]+1]
+
+        # Condition: m1 + m2 + m3 = 0
+        mask = (M1 + M2 + M3 == 0)
+
+        # Extract coordinates (m1,m2,m3)
+        triples = np.column_stack(np.where(mask))
+
+        # Convert index triples back to actual m values
+        # Because np.where returns indices into m1,m2,m3 arrays
+        m_tuples = np.column_stack((m1[triples[:,0]],
+                                    m2[triples[:,1]],
+                                    m3[triples[:,2]]))
+
+        # Exclude (0,0,0)
+        m_tuples = m_tuples[~np.all(m_tuples==0, axis=1)]
+        del m1, m2, m3, M1, M2, M3, triples, mask
+
+        for m_tup in m_tuples:
+            inds = l_start_inds[l_tup] + (m_span_lengths[l_tup]//2) + m_tup
+            coeff = float(wigner_3j(*l_tup, *m_tup))
+            B3[i] += ( coeff *
+                       np.sum(single_bond_basis[:, n1, inds[0]], axis=0) * 
+                       np.sum(single_bond_basis[:, n2, inds[1]], axis=0) *
+                       np.sum(single_bond_basis[:, n3, inds[2]], axis=0) )
+        n_tuples_B3.append(np.c_[n1,n2,n3])
+        del n1, n2, n3
+
+    B3 = np.r_[B3]
+    B3 = pd.DataFrame(
+                np.c_[np.tile(n_tuples_B3, (len(l_tuples_B3),1)),
+                      np.repeat(l_tuples_B3, len(n_tuples_B3), axis=0),
+                      B2],
+                columns=["n1", "n2", "n3", "l1", "l2", "l3"]
+                    )
+    del n_tuples_B3, l_tuples_B3, m_tuples
+    if body_order == 4:
+        return B1, B2, B3
+    
+    if body_order > 4:
+        print("NOTE: This function is implemented upto 4 body-order terms")
+        return B1, B2, B3
+    
+    from sympy.physics.wigner import clebsch_gordan
+
+    n1, n2, n3, n4 = np.ogrid[:v_size[0], :v_size[0], :v_size[0], 
+                          :v_size[0]]
+    mask = (n4 >= n3) & (n3 >= n2) & (n2 >= n1)    
+    contracted_n_tuples_B4 = np.column_stack(np.where(mask))
+    del n1, n2, n3, n4, mask
+
+    # Broadcast to shape (l_max+1, l_max+1, l_max+1, l_max+1)
+    l1, l2, l3, l4 = np.ogrid[:l_max+1, :l_max+1, :l_max+1, :l_max+1]
+
+    # Compute lower and upper valid bounds for L
+    L_min = np.maximum(np.abs(l1 - l2), np.abs(l3 - l4))
+    L_max = np.minimum(l1 + l2, l3 + l4)
+
+    # Condition for non-empty L range
+    mask = (L_min <= L_max)
+
+    # Extract valid quadruples:
+    quads = np.column_stack(np.where(mask))
+
+    # Convert indices to actual l-values:
+    l_tuples_B4 = np.column_stack((
+        unique_l[quads[:,0]],
+        unique_l[quads[:,1]],
+        unique_l[quads[:,2]],
+        unique_l[quads[:,3]]
+    ))
+    del l1, l2, l3, l4, L_min, L_max, mask, quads
+
+    B4 = [], n_tuples_B4 = []
+    for i,l_tup in enumerate(l_tuples_B4):   
+        if np.all(l_tup==l_tup[0]):
+            n1, n2, n3, n4 = contracted_n_tuples_B4.T
+        else:
+            n1, n2, n3, n4 = np.meshgrid(*([np.arange(v_size[0])]*4))
+            n1 = n1.ravel(); n2 = n2.ravel(); n3 = n3.ravel(); n4 = n4.ravel()
+        inds = l_start_inds[l_tup] + (m_span_lengths[l_tup]//2)
+        coeff = clebsch_gordan(*l_tup, 0, 0, 0)
         B3.append( coeff *
                    np.sum(single_bond_basis[:, n1, inds[0]], axis=0) * 
                    np.sum(single_bond_basis[:, n2, inds[1]], axis=0) *
@@ -237,8 +334,8 @@ def get_single_component_invariance_products_of_atomic_bases(single_bond_basis,
                 columns=["n1", "n2", "n3", "l1", "l2", "l3"]
                     )
     
-    if body_order == 3:
-        return B1, B2, B3
+    if body_order == 5:
+        return B1, B2, B3, B4
     
            
 
