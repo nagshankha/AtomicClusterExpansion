@@ -132,6 +132,7 @@ def get_single_component_invariance_products_of_atomic_bases(single_bond_basis,
                 columns=["n", "B1"] )
     else:
         raise RuntimeError("B1 must be all reals")
+    B1 = B1.convert_dtypes()
     
     if body_order == 2:
         return B1
@@ -165,14 +166,18 @@ def get_single_component_invariance_products_of_atomic_bases(single_bond_basis,
                                             inds[0]], axis=0) ) * (-1.)**m
     
     B2 = np.r_[*B2]
-    
-    B2 = pd.DataFrame(
+    if np.allclose(B2.imag, 0.0):
+        B2 = pd.DataFrame(
                 np.c_[np.tile(np.triu_indices(v_size[0])[0]+1, len(unique_l)), 
                       np.tile(np.triu_indices(v_size[0])[1]+1, len(unique_l)),
                       np.repeat(unique_l, int(v_size[0]*(v_size[0]+1)/2)),
                       B2],
                 columns=["n1", "n2", "l", "B2"]
                     )
+    else:
+        raise RuntimeError("B2 must be all reals")
+    B2 = B2.convert_dtypes()
+    
     
     if body_order == 3:
         return B1, B2
