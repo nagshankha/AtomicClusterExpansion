@@ -249,7 +249,7 @@ def get_single_component_invariance_products_of_atomic_bases(single_bond_basis,
                 np.c_[n_tuples_B3,
                       np.repeat(l_tuples_B3, n_multiples, axis=0),
                       B3.real],
-                columns=["n1", "n2", "n3", "l1", "l2", "l3"]
+                columns=["n1", "n2", "n3", "l1", "l2", "l3", "B3"]
                     )
     else:
         raise RuntimeError("B3 must be all reals")
