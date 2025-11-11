@@ -193,13 +193,14 @@ def get_single_component_invariance_products_of_atomic_bases(single_bond_basis,
     l_tuples_B3 = np.column_stack(np.where(mask))
     del l1, l2, l3, mask
 
-    B3 = []; n_tuples_B3 = []
+    B3 = []; n_tuples_B3 = []; n_multiples = []
     for i,l_tup in enumerate(l_tuples_B3):   
         if np.all(l_tup==l_tup[0]):
             n1, n2, n3 = contracted_n_tuples_B3.T
         else:
             n1, n2, n3 = np.meshgrid(*([np.arange(v_size[0])]*3))
             n1 = n1.ravel(); n2 = n2.ravel(); n3 = n3.ravel()
+        n_multiples.append(len(n1))
         inds = l_start_inds[l_tup] + (m_span_lengths[l_tup]//2)
         coeff = float(wigner_3j(*l_tup, 0, 0, 0))
         B3.append( coeff *
@@ -245,8 +246,8 @@ def get_single_component_invariance_products_of_atomic_bases(single_bond_basis,
     B3 = np.r_[*B3]
     if np.allclose(B3.imag, 0.0):
         B3 = pd.DataFrame(
-                np.c_[np.tile(n_tuples_B3, (len(l_tuples_B3),1)),
-                      np.repeat(l_tuples_B3, len(n_tuples_B3), axis=0),
+                np.c_[n_tuples_B3,
+                      np.repeat(l_tuples_B3, n_multiples, axis=0),
                       B3.real],
                 columns=["n1", "n2", "n3", "l1", "l2", "l3"]
                     )
