@@ -126,10 +126,12 @@ def get_single_component_invariance_products_of_atomic_bases(single_bond_basis,
     v_size = single_bond_basis.shape[1:]
 
     B1 = np.sum(single_bond_basis[:,:,0], axis=0) 
-    B1 = pd.DataFrame(
-                np.c_[np.arange(v_size[0])+1, B1],
-                columns=["n", "B1"]
-                    )
+    if np.allclose(B1.imag, 0.0):
+        B1 = pd.DataFrame(
+                np.c_[np.arange(v_size[0])+1, B1.real],
+                columns=["n", "B1"] )
+    else:
+        raise RuntimeError("B1 must be all reals")
     
     if body_order == 2:
         return B1
