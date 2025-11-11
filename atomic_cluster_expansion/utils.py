@@ -108,9 +108,9 @@ def get_single_bond_basis(r, radial_basis_functions,
     Rn = radial_basis_functions(r_norm)
     
     from scipy.special import sph_harm_y
-    l = np.arange(l_max+1)
-    l = np.repeat(l, (2*l)+1)
-    m = np.r_[*[np.arange(-x,x+1) for x in l]]
+    unique_l = np.arange(l_max+1)
+    l = np.repeat(unique_l, (2*unique_l)+1)
+    m = np.r_[*[np.arange(-x,x+1) for x in unique_l]]
     Y_lm = sph_harm_y(l, m, r_polar[:,None], r_azimuth[:,None])
 
     return np.sqrt(4*np.pi)*Rn[:,:,None]*Y_lm[:,None,:]
