@@ -171,7 +171,7 @@ def get_single_component_invariance_products_of_atomic_bases(single_bond_basis,
                 np.c_[np.tile(np.triu_indices(v_size[0])[0]+1, len(unique_l)), 
                       np.tile(np.triu_indices(v_size[0])[1]+1, len(unique_l)),
                       np.repeat(unique_l, int(v_size[0]*(v_size[0]+1)/2)),
-                      B2],
+                      B2.real],
                 columns=["n1", "n2", "l", "B2"]
                     )
     else:
