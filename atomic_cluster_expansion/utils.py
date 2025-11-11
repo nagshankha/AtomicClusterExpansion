@@ -163,11 +163,9 @@ def get_single_component_invariance_products_of_atomic_bases(single_bond_basis,
                                             inds[1]], axis=0) * 
                        np.sum(single_bond_basis[:, np.triu_indices(v_size[0])[1], 
                                             inds[0]], axis=0) ) * (-1.)**m
-    print(B2)
-    print(np.shape(B2))
-    B2 = np.r_[B2]
-    print(B2)
-    print(np.shape(B2))
+    
+    B2 = np.r_[*B2]
+    
     B2 = pd.DataFrame(
                 np.c_[np.tile(np.triu_indices(v_size[0])[0]+1, len(unique_l)), 
                       np.tile(np.triu_indices(v_size[0])[1]+1, len(unique_l)),
