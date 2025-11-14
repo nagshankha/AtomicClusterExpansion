@@ -102,7 +102,8 @@ def get_single_bond_basis(r, radial_basis_functions,
     
     r_norm = np.linalg.norm(r, axis=1)
     r_polar = np.arccos(r[:,-1]/r_norm)
-    r_azimuth = np.arccos(r[:,0]/r_norm)
+    r_norm_xy = np.linalg.norm(r[:,:2], axis=1)
+    r_azimuth = np.arccos(r[:,0]/r_norm_xy)
     r_azimuth[r[:,1]<0] = (2*np.pi)-r_azimuth[r[:,1]<0]
 
     Rn = radial_basis_functions(r_norm)
